@@ -1,0 +1,27 @@
+{
+  "name": "nba-pm-strategy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NBA Playoffs Championship Futures Scanner — DEGA Hackathon 2026",
+  "scripts": {
+    "start": "tsx src/runner.ts --dry-run",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ethers": "5.8.0",
+    "pmxtjs": "2.37.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "tsx": "4.21.0",
+    "typescript": "5.8.2",
+    "vitest": "4.1.4"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
