@@ -10,6 +10,8 @@ export interface SignalResult {
   polymarketPrice: number;
   delta: number;
   absDelta: number;
+  relativeEdge: number;
+  signalStrength: "strong" | "moderate" | "weak";
   direction: "sportsbook higher" | "Polymarket higher";
 }
 
@@ -38,6 +40,8 @@ export class FuturesScanner {
         polymarketPrice: c.polymarketPrice,
         delta: signal.delta,
         absDelta: signal.absDelta,
+        relativeEdge: signal.relativeEdge,
+        signalStrength: signal.signalStrength,
         direction: signal.direction,
       });
     }

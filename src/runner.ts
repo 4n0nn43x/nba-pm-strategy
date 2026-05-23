@@ -39,6 +39,8 @@ interface SignalLogEntry {
   sportsbookProb: number;
   polymarketPrice: number;
   delta: number;
+  relativeEdge: number;
+  signalStrength: "strong" | "moderate" | "weak";
   reasoning: string;
 }
 
@@ -179,10 +181,18 @@ export function extractTeamOdds(
       const outrights = bm.markets.find((m) => m.key === "outrights");
       if (!outrights) continue;
 
-      for (const outcome of outrights.outcomes) {
-        if (outcome.price <= 1) continue;
+      const eligible = outrights.outcomes.filter((o) => o.price > 1);
+      if (eligible.length === 0) continue;
+
+      // Strip bookmaker vig: divide each raw implied prob by the sum so they
+      // sum to 1.0, giving the fair (vig-free) probability for each team.
+      const rawTotal = eligible.reduce((sum, o) => sum + 1 / o.price, 0);
+      const vigFactor = rawTotal > 0 ? 1 / rawTotal : 1;
+
+      for (const outcome of eligible) {
+        const fairProb = (1 / outcome.price) * vigFactor;
         const probs = teamProbs.get(outcome.name) ?? [];
-        probs.push(1 / outcome.price);
+        probs.push(fairProb);
         teamProbs.set(outcome.name, probs);
       }
     }
@@ -233,9 +243,9 @@ async function runCycle(config: StrategyConfig): Promise<void> {
     signalCount++;
 
     const reasoning =
-      `${team}: sportsbook ${(impliedProb * 100).toFixed(1)}% vs ` +
+      `${team}: fair ${(impliedProb * 100).toFixed(1)}% vs ` +
       `Polymarket ${(market.yesPrice * 100).toFixed(1)}% ` +
-      `(${signal.direction}, delta ${(signal.absDelta * 100).toFixed(1)}%)`;
+      `(${signal.direction}, edge ${(signal.relativeEdge * 100).toFixed(1)}%, ${signal.signalStrength})`;
 
     const entry: SignalLogEntry = {
       ts,
@@ -246,6 +256,8 @@ async function runCycle(config: StrategyConfig): Promise<void> {
       sportsbookProb: impliedProb,
       polymarketPrice: market.yesPrice,
       delta: signal.absDelta,
+      relativeEdge: signal.relativeEdge,
+      signalStrength: signal.signalStrength,
       reasoning,
     };
     appendLog(entry);
