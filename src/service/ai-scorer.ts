@@ -10,6 +10,27 @@ export interface AiAssessment {
 
 interface OpenRouterResponse {
   choices: Array<{ message: { content: string } }>;
+  error?: { message: string };
+}
+
+function extractJson(text: string): AiAssessment | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
+    const rec = parsed["recommendation"] as string;
+    if (!["TAKE_EDGE", "SKIP_TOO_RISKY", "WATCH_ONLY"].includes(rec)) return null;
+    return {
+      confidenceScore: Number(parsed["confidenceScore"] ?? 0.5),
+      recommendation: rec as AiAssessment["recommendation"],
+      reasoning: String(parsed["reasoning"] ?? ""),
+      riskFactors: Array.isArray(parsed["riskFactors"])
+        ? (parsed["riskFactors"] as unknown[]).map(String)
+        : [],
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -36,20 +57,18 @@ export async function scoreSignal(params: {
     signalStrength, direction, bookmakerSources,
   } = params;
 
-  const prompt = `You are a sports prediction market analyst. Evaluate this NBA championship mispricing.
+  const systemPrompt =
+    "You are a quantitative sports betting analyst. " +
+    "Respond ONLY with a JSON object — no markdown, no explanation outside the JSON. " +
+    'Schema: { "confidenceScore": number (0-1), "recommendation": "TAKE_EDGE"|"SKIP_TOO_RISKY"|"WATCH_ONLY", "reasoning": string (max 100 words), "riskFactors": string[] (max 3) }';
 
-Team: ${team}
-Fair probability (vig-stripped sportsbook consensus, ${bookmakerSources} sources): ${(fairProb * 100).toFixed(1)}%
-Polymarket price: ${(polymarketPrice * 100).toFixed(1)}%
-Relative edge: ${(relativeEdge * 100).toFixed(1)}% (${direction})
-Signal strength: ${signalStrength}
-
-Using your knowledge of this NBA team's current playoff performance, roster, and recent form, assess:
-1. Does this mispricing make intuitive sense or is it likely noise?
-2. What are the main risks that could invalidate this edge?
-3. Is this worth acting on?
-
-Respond with JSON only, no markdown.`;
+  const userPrompt =
+    `Evaluate this NBA championship mispricing:\n` +
+    `Team: ${team}\n` +
+    `Fair prob (vig-stripped, ${bookmakerSources} bookmakers): ${(fairProb * 100).toFixed(1)}%\n` +
+    `Polymarket price: ${(polymarketPrice * 100).toFixed(1)}%\n` +
+    `Relative edge: ${(relativeEdge * 100).toFixed(1)}% (${direction}, ${signalStrength})\n\n` +
+    `Using your NBA knowledge, assess: is this edge genuine or noise? What are the main risks?`;
 
   try {
     const res = await fetch(OPENROUTER_API, {
@@ -65,53 +84,30 @@ Respond with JSON only, no markdown.`;
         temperature: 0.3,
         max_tokens: 350,
         messages: [
-          {
-            role: "system",
-            content:
-              "You are a quantitative sports betting analyst. Always respond with valid JSON matching the schema: { confidenceScore: number (0-1), recommendation: 'TAKE_EDGE'|'SKIP_TOO_RISKY'|'WATCH_ONLY', reasoning: string (max 120 words), riskFactors: string[] (max 3 items) }",
-          },
-          { role: "user", content: prompt },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "ai_assessment",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                confidenceScore: { type: "number" },
-                recommendation: {
-                  type: "string",
-                  enum: ["TAKE_EDGE", "SKIP_TOO_RISKY", "WATCH_ONLY"],
-                },
-                reasoning: { type: "string" },
-                riskFactors: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-              },
-              required: [
-                "confidenceScore",
-                "recommendation",
-                "reasoning",
-                "riskFactors",
-              ],
-              additionalProperties: false,
-            },
-          },
-        },
       }),
     });
 
-    if (!res.ok) return null;
-
     const data = (await res.json()) as OpenRouterResponse;
-    const content = data.choices[0]?.message?.content;
-    if (!content) return null;
 
-    return JSON.parse(content) as AiAssessment;
-  } catch {
+    if (!res.ok || data.error) {
+      process.stderr.write(`[ai-scorer] API error: ${data.error?.message ?? res.status}\n`);
+      return null;
+    }
+
+    const content = data.choices[0]?.message?.content ?? "";
+    const result = extractJson(content);
+
+    if (!result) {
+      process.stderr.write(`[ai-scorer] Could not parse JSON from response: ${content.slice(0, 120)}\n`);
+      return null;
+    }
+
+    return result;
+  } catch (err) {
+    process.stderr.write(`[ai-scorer] ${err instanceof Error ? err.message : String(err)}\n`);
     return null;
   }
 }
