@@ -1,5 +1,5 @@
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 
 export interface AiAssessment {
   confidenceScore: number;
@@ -28,6 +28,8 @@ export async function scoreSignal(params: {
 }): Promise<AiAssessment | null> {
   const apiKey = process.env["OPENROUTER_API_KEY"];
   if (!apiKey) return null;
+
+  const model = process.env["OPENROUTER_MODEL"] ?? DEFAULT_MODEL;
 
   const {
     team, fairProb, polymarketPrice, relativeEdge,
@@ -59,7 +61,7 @@ Respond with JSON only, no markdown.`;
         "X-Title": "NBA Prediction Market Scanner",
       },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         temperature: 0.3,
         max_tokens: 350,
         messages: [
