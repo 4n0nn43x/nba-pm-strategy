@@ -27,6 +27,7 @@ import { DEFAULT_CONFIG } from "./config/strategy.js";
 import { shouldFlag } from "./service/signals.js";
 import { checkRiskLimits } from "./service/risk.js";
 import { DEFAULT_RISK_CONFIG } from "./config/risk.js";
+import { scoreSignal, type AiAssessment } from "./service/ai-scorer.js";
 
 // ── Log entry types ─────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ interface SignalLogEntry {
   delta: number;
   relativeEdge: number;
   signalStrength: "strong" | "moderate" | "weak";
+  ai?: AiAssessment;
   reasoning: string;
 }
 
@@ -242,10 +244,24 @@ async function runCycle(config: StrategyConfig): Promise<void> {
     cycleSignals++;
     signalCount++;
 
+    const ai = await scoreSignal({
+      team,
+      fairProb: impliedProb,
+      polymarketPrice: market.yesPrice,
+      relativeEdge: signal.relativeEdge,
+      signalStrength: signal.signalStrength,
+      direction: signal.direction,
+      bookmakerSources: sources,
+    });
+
+    const aiTag = ai
+      ? ` | AI: ${ai.recommendation} (${(ai.confidenceScore * 100).toFixed(0)}%)`
+      : "";
+
     const reasoning =
       `${team}: fair ${(impliedProb * 100).toFixed(1)}% vs ` +
       `Polymarket ${(market.yesPrice * 100).toFixed(1)}% ` +
-      `(${signal.direction}, edge ${(signal.relativeEdge * 100).toFixed(1)}%, ${signal.signalStrength})`;
+      `(${signal.direction}, edge ${(signal.relativeEdge * 100).toFixed(1)}%, ${signal.signalStrength})${aiTag}`;
 
     const entry: SignalLogEntry = {
       ts,
@@ -258,6 +274,7 @@ async function runCycle(config: StrategyConfig): Promise<void> {
       delta: signal.absDelta,
       relativeEdge: signal.relativeEdge,
       signalStrength: signal.signalStrength,
+      ...(ai && { ai }),
       reasoning,
     };
     appendLog(entry);
