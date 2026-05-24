@@ -1,5 +1,5 @@
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const DEFAULT_MODEL = "google/gemini-2.5-pro";
 
 export interface AiAssessment {
   confidenceScore: number;
