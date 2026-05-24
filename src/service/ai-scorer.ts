@@ -14,10 +14,18 @@ interface OpenRouterResponse {
 }
 
 function extractJson(text: string): AiAssessment | null {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+  // Strip markdown code fences before parsing
+  const clean = text
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  const start = clean.indexOf("{");
+  const end = clean.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+
   try {
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
+    const parsed = JSON.parse(clean.slice(start, end + 1)) as Record<string, unknown>;
     const rec = parsed["recommendation"] as string;
     if (!["TAKE_EDGE", "SKIP_TOO_RISKY", "WATCH_ONLY"].includes(rec)) return null;
     return {
