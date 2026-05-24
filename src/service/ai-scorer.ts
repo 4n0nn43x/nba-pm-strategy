@@ -1,5 +1,5 @@
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.5-pro";
+const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
 export interface AiAssessment {
   confidenceScore: number;
