@@ -5,7 +5,7 @@
   "type": "module",
   "description": "NBA Playoffs Championship Futures Scanner — DEGA Hackathon 2026",
   "scripts": {
-    "start": "tsx src/runner.ts --dry-run",
+    "start": "tsx --env-file=.env src/runner.ts --dry-run",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "tsc --noEmit && vitest run"
