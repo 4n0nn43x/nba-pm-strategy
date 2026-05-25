@@ -1,0 +1,22 @@
+name: quick-dev
+description: Fast iteration — implement and test a small change
+
+steps:
+  - id: implement
+    agent: dev
+    skills: [canon-conventions]
+    prompt: |
+      Implement the requested change.
+      Keep it minimal — do not refactor beyond what's needed.
+      Follow the domain layering: Types → Config → Clients → Service → Runner.
+
+  - id: verify
+    agent: dev
+    skills: [canon-conventions]
+    depends_on: [implement]
+    prompt: |
+      Verify:
+      pnpm typecheck && pnpm test
+      If tests pass, do a quick dry-run:
+      pnpm exec tsx src/runner.ts --dry-run
+      Confirm the stdout protocol tags are correct.

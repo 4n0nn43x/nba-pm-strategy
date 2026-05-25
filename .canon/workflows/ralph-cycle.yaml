@@ -1,0 +1,50 @@
+name: ralph-cycle
+description: RALPH cycle — Research, Analyze, Learn, Plan, Hack
+
+steps:
+  - id: research
+    agent: market-analyst
+    skills: [prediction-markets, polymarket]
+    prompt: |
+      Research: What is the current state of NBA prediction markets?
+      - Which teams are in the playoffs right now?
+      - Which games are upcoming in the next 48h?
+      - What are the current Polymarket prices vs sportsbook lines?
+
+  - id: analyze
+    agent: strategy-architect
+    skills: [strategy-patterns, risk-management]
+    depends_on: [research]
+    prompt: |
+      Analyze: Where are the current mispricings?
+      - Compute relative edge for all matched pairs
+      - Rank by edge magnitude
+      - Flag any data quality concerns
+
+  - id: learn
+    agent: risk-analyst
+    skills: [risk-management, backtesting]
+    depends_on: [analyze]
+    prompt: |
+      Learn: What do recent signals tell us about strategy performance?
+      - Check .canon/execution/*.jsonl for past signals
+      - Did any past signals resolve correctly?
+      - Are there systematic biases (e.g., always sportsbook higher for favorites)?
+
+  - id: plan
+    agent: strategy-architect
+    skills: [strategy-patterns, canon-conventions]
+    depends_on: [learn]
+    prompt: |
+      Plan: What should be improved in the next iteration?
+      - Adjust thresholds if hit rate is low?
+      - Add new market types?
+      - Fix any data parsing issues?
+
+  - id: hack
+    agent: dev
+    skills: [canon-conventions]
+    depends_on: [plan]
+    prompt: |
+      Hack: Implement the planned improvements.
+      Follow the develop workflow for implementation + testing.

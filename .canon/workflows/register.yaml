@@ -1,0 +1,35 @@
+name: register
+description: Canon Arena registration workflow
+
+steps:
+  - id: pre-check
+    agent: deployment-ops
+    skills: [canon-conventions, arena-tracking]
+    prompt: |
+      Verify the automation is ready for registration:
+      1. pnpm exec tsx src/runner.ts --dry-run runs without errors
+      2. JSONL logs are written to .canon/execution/
+      3. stdout lines use the correct tags (START/SCAN/SIGNAL/NO_EDGE/STOP)
+      4. .env contains THE_ODDS_API_KEY
+
+  - id: register
+    agent: deployment-ops
+    skills: [arena-tracking]
+    depends_on: [pre-check]
+    prompt: |
+      Register on Canon Arena:
+      canon register \
+        --name "NBA Playoffs Prediction Market Strategy" \
+        --automation-id nba-futures-v1 \
+        --entry "pnpm exec tsx src/runner.ts --dry-run"
+      Confirm the automation_id in src/runner.ts matches.
+
+  - id: monitor
+    agent: deployment-ops
+    skills: [arena-tracking]
+    depends_on: [register]
+    prompt: |
+      Run the automation for 3 cycles and verify:
+      - Signals appear in .canon/execution/YYYY-MM-DD.jsonl
+      - Arena dashboard shows the automation as active
+      - No SCAN_ERROR lines in the first 3 cycles

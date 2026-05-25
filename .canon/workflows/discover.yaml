@@ -1,0 +1,40 @@
+name: discover
+description: Research and design workflow for new strategy ideas
+
+steps:
+  - id: market-research
+    agent: market-analyst
+    skills: [prediction-markets, polymarket]
+    prompt: |
+      Identify active NBA prediction markets on Polymarket.
+      List market types, current volumes, and team coverage.
+      Note any markets with unusual spreads or price discrepancies.
+
+  - id: odds-comparison
+    agent: strategy-architect
+    skills: [prediction-markets, strategy-patterns]
+    depends_on: [market-research]
+    prompt: |
+      Compare Polymarket prices to sportsbook implied probabilities.
+      Using the relative edge formula, identify the top 3 potential opportunities.
+      Document assumptions and data freshness.
+
+  - id: risk-assessment
+    agent: risk-analyst
+    skills: [risk-management]
+    depends_on: [odds-comparison]
+    prompt: |
+      Evaluate the identified opportunities for risk.
+      Check data quality (bookmaker source count, market liquidity).
+      Recommend go/no-go for each opportunity with justification.
+
+  - id: strategy-spec
+    agent: strategy-architect
+    skills: [strategy-patterns, canon-conventions]
+    depends_on: [risk-assessment]
+    prompt: |
+      Write a concise strategy specification:
+      - Market type and data sources
+      - Signal detection logic (thresholds, tiers)
+      - Risk parameters
+      - Expected signal frequency

@@ -1,0 +1,44 @@
+name: develop
+description: Implementation workflow for strategy code
+
+steps:
+  - id: scaffold
+    agent: dev
+    skills: [canon-conventions]
+    prompt: |
+      Review the strategy spec from the discover workflow.
+      Identify which files need to be created or modified in src/.
+      Plan the changes respecting the domain layering rule:
+      Types → Config → Clients → Service → Runner
+
+  - id: implement
+    agent: dev
+    skills: [canon-conventions, prediction-markets]
+    depends_on: [scaffold]
+    prompt: |
+      Implement the strategy changes.
+      - Add new types to src/types/ if needed
+      - Add config to src/config/ for any new parameters
+      - Add API clients to src/clients/ for new data sources
+      - Add signal logic to src/service/
+      - Update src/runner.ts to invoke the new scan
+
+  - id: test
+    agent: qa
+    skills: [canon-conventions]
+    depends_on: [implement]
+    prompt: |
+      Write unit tests for the new logic.
+      Run: pnpm test && pnpm typecheck
+      Verify stdout output format with a dry-run:
+      pnpm exec tsx src/runner.ts --dry-run
+
+  - id: review
+    agent: risk-analyst
+    skills: [risk-management]
+    depends_on: [test]
+    prompt: |
+      Review the implementation for risk correctness:
+      - Vig stripping is applied before comparison
+      - Risk limits are checked before emitting SIGNAL
+      - No live order placement code exists
